@@ -76,6 +76,15 @@ a:hover { text-decoration: underline; }
 
 .compose__head { margin-bottom: 22px; }
 
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.brand__logo { height: 30px; width: auto; display: block; }
+.brand__name {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--accent-deep);
+}
+
 .compose__title {
   font-family: var(--serif);
   font-weight: 500;

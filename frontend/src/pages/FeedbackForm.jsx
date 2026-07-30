@@ -42,11 +42,25 @@ export default function FeedbackForm() {
     <div className="wrap">
       <div className="compose">
         <div className="compose__head">
-          <span className="eyebrow">Анонимно</span>
-          <h1 className="compose__title">Расскажите, что стоит изменить</h1>
+          <div className="brand">
+            {/* Логотип: положите файл в frontend/public/logo.svg — появится здесь.
+                Пока файла нет, слот скрывается через onError. */}
+            <img
+              src="/logo.svg"
+              alt="kravt h&h"
+              className="brand__logo"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+            <span className="brand__name">kravt h&h</span>
+          </div>
+          <h1 className="compose__title">Банк идей и предложений</h1>
           <p className="compose__lede">
-            Идея, наблюдение или то, что мешает работать — напишите свободно. Отзыв
-            уходит без имени: мы не сохраняем, кто его оставил.
+            Это пространство для вашей обратной связи. Здесь вы можете написать свои
+            идеи, рассказать о том, что какой-то рабочий процесс работает неправильно и
+            предложить его улучшить, поделиться радостью от работы в компании или тем,
+            на что стоит обратить внимание.
           </p>
         </div>
 
