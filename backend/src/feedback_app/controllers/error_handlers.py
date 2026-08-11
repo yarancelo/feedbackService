@@ -6,7 +6,7 @@ propagate here, where each domain error becomes exactly one HTTP status.
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from feedback_app.core.exceptions import AppError, AuthError, NotFoundError
+from feedback_app.core.exceptions import AppError, AuthError, IntegrationError, NotFoundError
 from feedback_app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -14,6 +14,7 @@ logger = get_logger(__name__)
 _STATUS_BY_TYPE = [
     (AuthError, status.HTTP_401_UNAUTHORIZED),
     (NotFoundError, status.HTTP_404_NOT_FOUND),
+    (IntegrationError, status.HTTP_502_BAD_GATEWAY),
     (AppError, status.HTTP_500_INTERNAL_SERVER_ERROR),
 ]
 

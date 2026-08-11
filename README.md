@@ -77,6 +77,8 @@ repositories → БД`; `models` (Model), `schemas` (View), `controllers` (Contr
 | POST   | `/api/auth/login`        | все    | `{login, password}` → `{access_token}` или 401  |
 | GET    | `/api/feedbacks`         | админ  | `?page=&order=asc\|desc&date_from=&date_to=` (по 50) |
 | DELETE | `/api/feedbacks/{id}`    | админ  | Удалить отзыв                                   |
+| GET    | `/api/employees`         | все    | Справочник сотрудников (Bitrix24 или заглушка)  |
+| POST   | `/api/employees/sync`    | админ  | Принудительно обновить справочник из Bitrix24    |
 | GET    | `/api/health`            | все    | Проверка живости                                |
 
 ## Тесты

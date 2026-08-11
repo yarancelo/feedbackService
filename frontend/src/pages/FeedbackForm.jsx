@@ -1,101 +1,20 @@
-// Public page: submit anonymous feedback.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { createFeedback } from '../api/feedback.js'
+import { createIdea } from '../api/ideas.js'
+import { listCategories } from '../api/categories.js'
+import AuthorPicker from '../components/AuthorPicker.jsx'
 import Button from '../components/Button.jsx'
 import ErrorBanner from '../components/ErrorBanner.jsx'
 import Field from '../components/Field.jsx'
-import { logger } from '../lib/logger.js'
+import Logo from '../components/Logo.jsx'
 
+const VISIBILITIES = [['anonymous', 'Анонимно', 'Автор не будет указан.'], ['private', 'Скрыть автора', 'Автора увидит только администратор.'], ['public', 'Показать автора', 'Имя и отдел будут указаны после публикации.']]
 export default function FeedbackForm() {
-  const [topic, setTopic] = useState('')
-  const [body, setBody] = useState('')
-  const [status, setStatus] = useState('idle') // idle | sending | done
-  const [error, setError] = useState('')
-
-  const canSend = topic.trim() !== '' && body.trim() !== '' && status !== 'sending'
-
-  async function submit(e) {
-    e.preventDefault()
-    if (!canSend) return
-    setStatus('sending')
-    setError('')
-    logger.info('Submitting anonymous feedback')
-    try {
-      await createFeedback(topic.trim(), body.trim())
-      setStatus('done')
-    } catch (err) {
-      logger.error('Feedback submission failed', err.message)
-      setError(err.message)
-      setStatus('idle')
-    }
-  }
-
-  function reset() {
-    setTopic('')
-    setBody('')
-    setError('')
-    setStatus('idle')
-  }
-
-  return (
-    <div className="wrap">
-      <div className="compose">
-        <div className="compose__head">
-          <div className="brand">
-            {/* Логотип: положите файл в frontend/public/logo.svg — появится здесь.
-                Пока файла нет, слот скрывается через onError. */}
-            <img
-              src="/logo.svg"
-              alt="kravt h&h"
-              className="brand__logo"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
-            />
-            <span className="brand__name">kravt h&h</span>
-          </div>
-          <h1 className="compose__title">Банк идей и предложений</h1>
-          <p className="compose__lede">
-            Это пространство для вашей обратной связи. Здесь вы можете написать свои
-            идеи, рассказать о том, что какой-то рабочий процесс работает неправильно и
-            предложить его улучшить, поделиться радостью от работы в компании или тем,
-            на что стоит обратить внимание.
-          </p>
-        </div>
-
-        <div className="card">
-          {status === 'done' ? (
-            <div className="sent">
-              <div className="sent__mark" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
-              </div>
-              <h2 className="sent__title">Отзыв отправлен</h2>
-              <p className="sent__text">
-                Он лёг в общий ящик без каких-либо данных о вас. Спасибо, что нашли
-                время написать.
-              </p>
-              <Button variant="ghost" onClick={reset}>Написать ещё</Button>
-            </div>
-          ) : (
-            <form onSubmit={submit} className="fade-in" noValidate>
-              <ErrorBanner message={error} />
-              <Field id="topic" label="Тема" value={topic} onChange={setTopic}
-                     maxLength={500} placeholder="Коротко о сути" />
-              <Field id="body" label="Текст отзыва" value={body} onChange={setBody}
-                     textarea placeholder="Опишите подробнее — что происходит и что можно улучшить" />
-              <div className="row-between">
-                <span className="hint">Тема и текст обязательны</span>
-                <Button variant="primary" type="submit" disabled={!canSend}>
-                  {status === 'sending' ? 'Отправляем…' : 'Отправить анонимно'}
-                </Button>
-              </div>
-            </form>
-          )}
-        </div>
-
-        <p className="footlink"><Link to="/admin">Вход для администратора</Link></p>
-      </div>
-    </div>
-  )
+  const [categories, setCategories] = useState([]); const [form, setForm] = useState({ submission_type: 'idea', topic: '', body: '', category: '', visibility: 'anonymous', authorId: null }); const [state, setState] = useState('editing'); const [error, setError] = useState('')
+  const set = (name) => (value) => setForm((current) => ({ ...current, [name]: value }))
+  const isIdea = form.submission_type === 'idea'; const named = form.visibility !== 'anonymous'; const canSubmit = form.body.trim() && (!isIdea || form.category) && (!named || form.authorId) && state !== 'sending'
+  useEffect(() => { listCategories().then(setCategories).catch((requestError) => setError(requestError.message)) }, [])
+  async function submit(event) { event.preventDefault(); if (!canSubmit) return; setState('sending'); setError(''); try { await createIdea({ topic: form.topic.trim() || null, body: form.body.trim(), category: isIdea ? form.category : 'Обращение', visibility: form.visibility, author_bitrix_id: form.authorId, submission_type: form.submission_type }); setState('sent') } catch (requestError) { setError(requestError.message); setState('editing') } }
+  function reset() { setForm({ submission_type: 'idea', topic: '', body: '', category: '', visibility: 'anonymous', authorId: null }); setError(''); setState('editing') }
+  return <div className="wrap"><main className="compose"><header className="compose__head"><Logo /><h1 className="compose__title">Отправить предложение</h1><p className="compose__lede">Выберите тип и опишите суть. Предложения проходят проверку перед публикацией.</p></header><section className="card">{state === 'sent' ? <div className="sent"><h2 className="sent__title">Отправлено</h2><p className="sent__text">Сообщение поступило администратору на проверку.</p><Button type="button" onClick={reset}>Добавить еще</Button></div> : <form onSubmit={submit} noValidate><ErrorBanner message={error} /><div className="field"><label className="label" htmlFor="submission_type">Тип</label><select id="submission_type" className="input" value={form.submission_type} onChange={(event) => set('submission_type')(event.target.value)}><option value="idea">Предложение по улучшению</option><option value="feedback">Обращение</option></select></div>{isIdea && <div className="field"><label className="label" htmlFor="category">Тема</label><select id="category" className="input" value={form.category} onChange={(event) => set('category')(event.target.value)} required><option value="">Выберите тему</option>{categories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}</select></div>}<Field id="topic" label="Краткий заголовок" value={form.topic} onChange={set('topic')} maxLength={500} placeholder="Например: Общий календарь смен" /><Field id="body" label="Описание" value={form.body} onChange={set('body')} textarea placeholder={isIdea ? 'Опишите, что можно улучшить и как это сделать' : 'Опишите вопрос или ситуацию'} /><fieldset className="visibility"><legend className="label">Автор</legend>{VISIBILITIES.map(([value, title, hint]) => <label className="visibility__option" key={value}><input type="radio" name="visibility" value={value} checked={form.visibility === value} onChange={() => setForm((current) => ({ ...current, visibility: value, authorId: value === 'anonymous' ? null : current.authorId }))} /><span><strong>{title}</strong><small>{hint}</small></span></label>)}</fieldset><AuthorPicker value={form.authorId} onChange={set('authorId')} disabled={!named} />{named && !form.authorId && <p className="form-note">Выберите автора из списка.</p>}<div className="row-between"><span className="hint">Публикуются только принятые предложения.</span><Button type="submit" disabled={!canSubmit}>{state === 'sending' ? 'Отправляем' : 'Отправить'}</Button></div></form>}</section><p className="footlink"><Link to="/">Вернуться к списку</Link></p></main></div>
 }

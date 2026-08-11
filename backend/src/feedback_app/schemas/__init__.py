@@ -1,10 +1,11 @@
 from feedback_app.schemas.auth import LoginRequest, TokenResponse
-from feedback_app.schemas.feedback import FeedbackCreate, FeedbackOut, FeedbackPage
+from feedback_app.schemas.idea import IdeaCreate, IdeaOut, IdeaPage, IdeaStatusUpdate
 
 __all__ = [
     "LoginRequest",
     "TokenResponse",
-    "FeedbackCreate",
-    "FeedbackOut",
-    "FeedbackPage",
+    "IdeaCreate",
+    "IdeaOut",
+    "IdeaPage",
+    "IdeaStatusUpdate",
 ]

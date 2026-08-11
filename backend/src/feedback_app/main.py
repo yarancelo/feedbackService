@@ -12,7 +12,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from feedback_app.controllers import auth_controller, feedback_controller
+from feedback_app.controllers import (
+    auth_controller,
+    employee_controller,
+    category_controller,
+    comment_controller,
+    idea_bank_controller,
+    idea_controller,
+    wall_controller,
+    leaderboard_controller,
+)
 from feedback_app.controllers.error_handlers import register_error_handlers
 from feedback_app.core.config import settings
 from feedback_app.core.logging import configure_logging, get_logger
@@ -29,7 +38,13 @@ def _build_api_router() -> APIRouter:
         return {"status": "ok"}
 
     api.include_router(auth_controller.router)
-    api.include_router(feedback_controller.router)
+    api.include_router(idea_controller.router)
+    api.include_router(wall_controller.router)
+    api.include_router(leaderboard_controller.router)
+    api.include_router(employee_controller.router)
+    api.include_router(category_controller.router)
+    api.include_router(comment_controller.router)
+    api.include_router(idea_bank_controller.router)
     return api
 
 
@@ -42,6 +57,10 @@ def _bootstrap_local_database() -> None:
         return
 
     from feedback_app.core.database import Base, SessionLocal, engine
+    from feedback_app.models.idea import Idea
+    from feedback_app.models.reaction import IdeaReaction
+    from feedback_app.models.category import IdeaCategory
+    from feedback_app.models.comment import IdeaComment
     from feedback_app.models.user import User
 
     logger.info("Local mode: ensuring SQLite schema and seed admin")

@@ -1,4 +1,4 @@
 from feedback_app.services.auth_service import AuthService
-from feedback_app.services.feedback_service import FeedbackService
+from feedback_app.services.idea_service import IdeaService
 
-__all__ = ["AuthService", "FeedbackService"]
+__all__ = ["AuthService", "IdeaService"]

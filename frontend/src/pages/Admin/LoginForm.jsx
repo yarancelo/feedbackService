@@ -42,7 +42,7 @@ export default function LoginForm({ onLogin }) {
             <div className="row-between">
               <Link to="/" className="hint">← К форме отзыва</Link>
               <Button variant="primary" type="submit" disabled={busy || !login || !password}>
-                {busy ? 'Проверяем…' : 'Авторизоваться'}
+                {busy ? 'Проверяем' : 'Авторизоваться'}
               </Button>
             </div>
           </form>

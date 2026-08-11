@@ -51,3 +51,23 @@ class FeedbackNotFoundError(NotFoundError):
     """A feedback item with the requested id does not exist."""
 
     message = "Отзыв не найден"
+
+
+class IdeaNotFoundError(NotFoundError):
+    message = "Idea not found"
+
+
+class UnknownAuthorError(NotFoundError):
+    message = "Author not found in employee directory"
+
+
+class IntegrationError(AppError):
+    """Base class for failures talking to an external system."""
+
+    message = "Внешний сервис недоступен"
+
+
+class BitrixError(IntegrationError):
+    """A call to the Bitrix24 REST API failed."""
+
+    message = "Не удалось получить данные из Bitrix24"
