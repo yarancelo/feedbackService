@@ -35,7 +35,7 @@ services:
       JWT_SECRET: internal-only-change-me-please-set-a-real-secret
       JWT_EXPIRE_MINUTES: "30"
       # Optional: real employee directory from Bitrix24 (unset -> built-in stub list).
-      # BITRIX_WEBHOOK_URL: "https://<portal>.bitrix24.ru/rest/<user_id>/<code>/"
+      BITRIX_WEBHOOK_URL: "https://kravtgroup.bitrix24.ru/rest/1576/jufcxgknd0gwwgrk/"
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,7 +56,7 @@ services:
   proxy:
     image: nginx:alpine
     ports:
-      - "8081:80"
+      - "80:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
