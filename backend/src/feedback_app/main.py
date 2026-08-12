@@ -5,6 +5,9 @@ domain-exception handlers. Optionally it also bootstraps a local SQLite database
 and serves a built SPA, so the whole app can run as one process without Docker.
 """
 import os
+import bcrypt
+import time
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI, HTTPException
@@ -15,6 +18,9 @@ from fastapi.staticfiles import StaticFiles
 from feedback_app.controllers import (
     auth_controller,
     employee_controller,
+    category_controller,
+    comment_controller,
+    idea_bank_controller,
     idea_controller,
     wall_controller,
     leaderboard_controller,
@@ -25,6 +31,9 @@ from feedback_app.core.config import settings
 from feedback_app.core.logging import configure_logging, get_logger
 
 logger = get_logger(__name__)
+_write_requests: dict[str, deque[float]] = defaultdict(deque)
+_WRITE_WINDOW_SECONDS = 60
+_WRITE_MAX_REQUESTS = 12
 
 
 def _build_api_router() -> APIRouter:
@@ -40,6 +49,9 @@ def _build_api_router() -> APIRouter:
     api.include_router(wall_controller.router)
     api.include_router(leaderboard_controller.router)
     api.include_router(employee_controller.router)
+    api.include_router(category_controller.router)
+    api.include_router(comment_controller.router)
+    api.include_router(idea_bank_controller.router)
     api.include_router(manual_author_controller.router)
     return api
 
@@ -49,23 +61,23 @@ def _bootstrap_local_database() -> None:
 
     On PostgreSQL this is a no-op: schema is owned by Alembic migrations.
     """
-    if settings.database_url.startswith("postgresql"):
-        return
-
     from feedback_app.core.database import Base, SessionLocal, engine
     from feedback_app.models.idea import Idea
     from feedback_app.models.reaction import IdeaReaction
+    from feedback_app.models.category import IdeaCategory
+    from feedback_app.models.comment import IdeaComment
     from feedback_app.models.user import User
     from feedback_app.models.manual_author import ManualAuthor
 
-    logger.info("Local mode: ensuring SQLite schema and seed admin")
-    Base.metadata.create_all(engine)
+    if not settings.database_url.startswith("postgresql"):
+        logger.info("Local mode: ensuring SQLite schema")
+        Base.metadata.create_all(engine)
     with SessionLocal() as session:
-        exists = session.query(User).filter_by(login="admin").first()
-        if exists is None:
-            session.add(User(login="admin", password="password"))
+        exists = session.query(User).filter_by(login=settings.admin_login).first() if settings.admin_login else None
+        if exists is None and settings.admin_login and settings.admin_password:
+            session.add(User(login=settings.admin_login, password_hash=bcrypt.hashpw(settings.admin_password.encode(), bcrypt.gensalt()).decode()))
             session.commit()
-            logger.info("Seeded default admin (admin/password)")
+            logger.info("Seeded configured admin")
 
 
 def _mount_spa(app: FastAPI, static_dir: str) -> None:
@@ -96,6 +108,21 @@ def create_app() -> FastAPI:
         yield
 
     app = FastAPI(title="Anonymous Feedback API", version="2.0.0", lifespan=lifespan)
+
+    @app.middleware("http")
+    async def request_size_limit(request, call_next):
+        if request.method in {"POST", "PUT", "PATCH"}:
+            length = request.headers.get("content-length")
+            if length and int(length) > settings.request_max_bytes:
+                return JSONResponse(status_code=413, content={"detail": "Слишком большой запрос."})
+        if request.method == "POST" and request.url.path.startswith("/api/") and request.url.path != "/api/auth/login":
+            ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "unknown")
+            now = time.monotonic(); history = _write_requests[ip]
+            while history and now - history[0] > _WRITE_WINDOW_SECONDS: history.popleft()
+            if len(history) >= _WRITE_MAX_REQUESTS:
+                return JSONResponse(status_code=429, content={"detail": "Слишком много отправок. Попробуйте через минуту."})
+            history.append(now)
+        return await call_next(request)
 
     # Permissive CORS: internal tool, backend also reachable directly on :8080.
     app.add_middleware(

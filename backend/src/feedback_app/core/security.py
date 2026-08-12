@@ -21,7 +21,7 @@ def create_access_token(subject: str) -> str:
     payload = {"sub": subject, "iat": now, "exp": expires_at}
 
     token = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
-    logger.debug("Issued access token for subject=%s (exp=%s)", subject, expires_at.isoformat())
+    logger.debug("Issued access token")
     return token
 
 
@@ -30,7 +30,7 @@ def decode_access_token(token: str) -> str:
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
     except jwt.PyJWTError as exc:
-        logger.warning("Rejected access token: %s", exc)
+        logger.warning("Rejected access token")
         raise TokenError() from exc
 
     subject = payload.get("sub")
@@ -38,5 +38,5 @@ def decode_access_token(token: str) -> str:
         logger.warning("Access token has no subject claim")
         raise TokenError()
 
-    logger.debug("Accepted access token for subject=%s", subject)
+    logger.debug("Accepted access token")
     return subject

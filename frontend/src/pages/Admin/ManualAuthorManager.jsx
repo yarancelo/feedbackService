@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
+import { deleteManualAuthor, listManualAuthors, updateManualAuthor } from '../../api/manualAuthors.js'
 import Button from '../../components/Button.jsx'
-import ErrorBanner from '../../components/ErrorBanner.jsx'
-import { listManualAuthors, updateManualAuthor } from '../../api/manualAuthors.js'
 
 export default function ManualAuthorManager() {
   const [authors, setAuthors] = useState([]); const [error, setError] = useState('')
-  async function load() { try { setAuthors(await listManualAuthors()) } catch (requestError) { setError(requestError.message) } }
+  const load = () => listManualAuthors().then(setAuthors).catch((requestError) => setError(requestError.message))
   useEffect(() => { load() }, [])
-  async function edit(author) { const fullName = window.prompt('ФИО', author.full_name); if (!fullName?.trim()) return; const department = window.prompt('Отдел', author.department || '') ?? author.department; const company = window.prompt('Компания', author.company || '') ?? author.company; const position = window.prompt('Должность', author.position || '') ?? author.position; try { await updateManualAuthor(author.id, { full_name: fullName.trim(), department, company, position }); load() } catch (requestError) { setError(requestError.message) } }
-  return <section className="manual-authors"><h2>Подтверждённые авторы</h2><p>Сотрудники, добавленные вручную и отсутствующие в справочнике Bitrix24.</p><ErrorBanner message={error} />{authors.length ? authors.map((author) => <div className="manual-authors__row" key={author.id}><span><strong>{author.full_name}</strong><small>{[author.company, author.department, author.position].filter(Boolean).join(', ') || 'Дополнительных данных нет'}</small></span><Button variant="ghost" type="button" onClick={() => edit(author)}>Редактировать</Button></div>) : <p className="hint">Подтверждённых авторов пока нет.</p>}</section>
+  async function edit(item) { const fullName = window.prompt('ФИО', item.full_name); if (fullName === null || !fullName.trim()) return; const department = window.prompt('Отдел', item.department || ''); if (department === null) return; const company = window.prompt('Компания или отель', item.company || ''); if (company === null) return; try { await updateManualAuthor(item.bitrix_id.replace('manual:', ''), { full_name: fullName.trim(), department: department.trim() || null, company: company.trim() || null }); load() } catch (requestError) { setError(requestError.message) } }
+  async function remove(item) { if (!window.confirm(`Удалить ${item.full_name} из локального справочника? Уже отправленные идеи не изменятся.`)) return; try { await deleteManualAuthor(item.bitrix_id.replace('manual:', '')); load() } catch (requestError) { setError(requestError.message) } }
+  return <section className="leader-table"><h2>Подтверждённые авторы</h2><p className="hint">Сотрудники, добавленные вручную после проверки.</p>{error && <p className="comments__error" role="alert">{error}</p>}{authors.length ? <table><thead><tr><th>ФИО</th><th>Отдел</th><th>Действия</th></tr></thead><tbody>{authors.map((item) => <tr key={item.bitrix_id}><td>{item.full_name}</td><td>{item.department || item.company || 'Не указан'}</td><td><Button variant="ghost" onClick={() => edit(item)}>Редактировать</Button><Button variant="danger" onClick={() => remove(item)}>Удалить</Button></td></tr>)}</tbody></table> : <p>Подтверждённых авторов пока нет.</p>}</section>
 }

@@ -25,7 +25,7 @@ function extractErrorMessage(data) {
   const detail = data && data.detail
   if (typeof detail === 'string') return detail
   if (Array.isArray(detail)) return detail.map((d) => d.msg).join(', ')
-  return 'Не получилось выполнить действие. Попробуйте ещё раз.'
+  return 'Что-то пошло не так. Попробуйте ещё раз.'
 }
 
 async function parseBody(response) {

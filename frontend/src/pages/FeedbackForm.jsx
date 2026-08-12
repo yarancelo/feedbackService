@@ -1,98 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { createIdea } from '../api/ideas.js'
+import { listCategories } from '../api/categories.js'
 import AuthorPicker from '../components/AuthorPicker.jsx'
 import Button from '../components/Button.jsx'
 import ErrorBanner from '../components/ErrorBanner.jsx'
 import Field from '../components/Field.jsx'
+import Logo from '../components/Logo.jsx'
 
-const VISIBILITIES = [
-  ['anonymous', 'Анонимно', 'Без имени. Идея не участвует в выборе идеи недели.'],
-  ['private', 'Скрыть имя', 'Имя увидит только администратор. Идея сможет участвовать в выборе идеи недели.'],
-  ['public', 'Показать имя', 'Имя и отдел будут видны на стене.'],
-]
-
+const VISIBILITIES = [['anonymous', 'Полностью анонимно', 'Имя не сохраняется и не будет доступно администратору.'], ['private', 'Имя видно только администратору', 'На стене сообщение будет анонимным. Администратор увидит ваше имя.'], ['public', 'Имя видно всем', 'Имя и подразделение будут показаны рядом с идеей.']]
+const empty = { submission_type: '', topic: '', body: '', category: '', feedback_kind: '', visibility: 'anonymous', authorId: null, authorName: '' }
 export default function FeedbackForm() {
-  const [searchParams] = useSearchParams()
-  const isFeedback = searchParams.get('type') === 'feedback'
-  const defaultCategory = isFeedback ? 'Обратная связь' : 'Идея'
-  const [form, setForm] = useState({ topic: '', body: '', category: defaultCategory, visibility: 'anonymous', authorId: null, authorName: '' })
-  const [state, setState] = useState('editing')
-  const [error, setError] = useState('')
-  const named = form.visibility !== 'anonymous'
-  const set = (name) => (value) => setForm((current) => ({ ...current, [name]: value }))
-  const canSubmit = form.body.trim() && (!named || form.authorId || form.authorName.trim()) && state !== 'sending'
-
-  async function submit(event) {
-    event.preventDefault()
-    if (!canSubmit) return
-    setState('sending')
-    setError('')
-    try {
-      await createIdea({
-        topic: form.topic.trim() || null,
-        body: form.body.trim(),
-        category: form.category.trim() || null,
-        visibility: form.visibility,
-        author_bitrix_id: form.authorId,
-        author_name: form.authorId ? null : form.authorName.trim() || null,
-      })
-      setState('sent')
-    } catch (requestError) {
-      setError(requestError.message)
-      setState('editing')
-    }
-  }
-
-  function reset() {
-    setForm({ topic: '', body: '', category: defaultCategory, visibility: 'anonymous', authorId: null, authorName: '' })
-    setError('')
-    setState('editing')
-  }
-
-  return (
-    <div className="wrap">
-      <main className="compose">
-        <header className="compose__head">
-          <Link className="form-close" to="/" aria-label="Закрыть">×</Link>
-          <p className="eyebrow">Стена идей</p>
-          <h1 className="compose__title">{isFeedback ? 'Оставить отзыв' : 'Предложить идею'}</h1>
-          <p className="compose__lede">Одна идея - один стикер. Не обязательно предлагать что-то большое: небольшие улучшения тоже важны.</p>
-        </header>
-        <section className="card">
-          {state === 'sent' ? (
-            <div className="sent">
-              <div className="sent__mark" aria-hidden="true">✓</div>
-              <h2 className="sent__title">Идея опубликована</h2>
-              <p className="sent__text">Идея уже на стене со статусом «На рассмотрении». После модерации принятые идеи с указанным автором смогут участвовать в выборе идеи недели.</p>
-              <Button type="button" onClick={reset}>Предложить ещё идею</Button>
-            </div>
-          ) : (
-            <form onSubmit={submit} noValidate>
-              <ErrorBanner message={error} />
-              <Field id="topic" label="Название идеи" value={form.topic} onChange={set('topic')} maxLength={500} placeholder="Сформулируйте идею в нескольких словах" />
-              <Field id="body" label="Расскажите подробнее" value={form.body} onChange={set('body')} textarea placeholder="Что предлагаете изменить и почему это будет полезно?" />
-              {!isFeedback && <Field id="category" label="Категория" value={form.category} onChange={set('category')} maxLength={100} placeholder="Например: сервис, процессы или команда" />}
-              <fieldset className="visibility">
-                <legend className="label">Как указать автора?</legend>
-                {VISIBILITIES.map(([value, title, hint]) => (
-                  <label className="visibility__option" key={value}>
-                    <input type="radio" name="visibility" value={value} checked={form.visibility === value} onChange={() => setForm((current) => ({ ...current, visibility: value, authorId: value === 'anonymous' ? null : current.authorId, authorName: value === 'anonymous' ? '' : current.authorName }))} />
-                    <span><strong>{title}</strong><small>{hint}</small></span>
-                  </label>
-                ))}
-              </fieldset>
-              <AuthorPicker value={form.authorId} manualValue={form.authorName} onChange={set('authorId')} onManualChange={set('authorName')} disabled={!named} />
-              {named && !form.authorId && !form.authorName.trim() && <p className="form-note">Выберите сотрудника или укажите ФИО.</p>}
-              <div className="row-between">
-                <span className="hint">Полезные и оригинальные идеи могут стать идеей недели.</span>
-                <Button type="submit" disabled={!canSubmit}>{state === 'sending' ? 'Отправляем…' : 'Опубликовать идею'}</Button>
-              </div>
-            </form>
-          )}
-        </section>
-        <p className="footlink"><Link to="/">Вернуться к стене идей</Link> · <Link to="/admin">Вход для администратора</Link></p>
-      </main>
-    </div>
-  )
+  const [query] = useSearchParams(); const preset = query.get('type') === 'feedback' ? 'feedback' : query.get('type') === 'idea' ? 'idea' : ''; const [form, setForm] = useState({ ...empty, submission_type: preset }); const [categories, setCategories] = useState([]); const [state, setState] = useState('editing'); const [error, setError] = useState(''); const [errors, setErrors] = useState({})
+  const idea = form.submission_type === 'idea'; const feedback = form.submission_type === 'feedback'; const named = form.visibility !== 'anonymous'; const modes = feedback ? VISIBILITIES.slice(0, 2) : VISIBILITIES; const set = (key) => (value) => { setForm((current) => ({ ...current, [key]: value })); setErrors((current) => ({ ...current, [key]: '' })) }
+  useEffect(() => { listCategories().then(setCategories).catch(() => setError('Не удалось загрузить темы.')) }, [])
+  function selectType(type) { setForm((current) => ({ ...current, submission_type: type, visibility: type === 'feedback' && current.visibility === 'public' ? 'private' : current.visibility })) }
+  function validate() { const next = {}; if (idea && !form.category) next.category = 'Выберите тему.'; if (idea && !form.topic.trim()) next.topic = 'Укажите название идеи.'; if (!form.body.trim()) next.body = 'Опишите суть сообщения.'; if (named && !form.authorId && !form.authorName.trim()) next.author = 'Выберите сотрудника или укажите ФИО.'; setErrors(next); return !Object.keys(next).length }
+  async function submit(event) { event.preventDefault(); if (!validate()) return; setState('sending'); try { await createIdea({ topic: form.topic.trim() || null, body: form.body.trim(), category: idea ? form.category : (form.feedback_kind || 'Обратная связь'), visibility: form.visibility, author_bitrix_id: form.authorId, author_name: form.authorId ? null : form.authorName.trim() || null, submission_type: form.submission_type }); setState('sent') } catch { setError('Не удалось отправить сообщение. Попробуйте снова.'); setState('editing') } }
+  if (!form.submission_type) return <div className="wrap"><main className="compose"><header className="compose__head"><div className="form-topline"><Logo /><Link className="form-close" to="/" aria-label="Закрыть">×</Link></div><h1 className="compose__title">Что вы хотите отправить?</h1></header><section className="choice-grid"><button className="choice-card" onClick={() => selectType('idea')}><strong>Предложить идею</strong><span>Предложите изменение, которое сделает работу, сервис или процессы лучше.</span></button><button className="choice-card" onClick={() => selectType('feedback')}><strong>Оставить обратную связь</strong><span>Расскажите о вопросе, проблеме или ситуации, которая требует внимания.</span></button></section></main></div>
+  const title = idea ? 'Предложить идею' : 'Оставить обратную связь'
+  if (state === 'sent') return <div className="wrap"><main className="compose"><header className="compose__head"><div className="form-topline"><Logo /><Link className="form-close" to="/" aria-label="Закрыть">×</Link></div></header><section className="card"><div className="sent" role="status"><h1 className="sent__title">{idea ? 'Идея отправлена' : 'Обращение отправлено'}</h1><p className="sent__text">{idea ? 'Мы получили идею и отправили её на проверку.' : 'Мы получили ваше обращение.'}</p><div className="sent-actions"><Button onClick={() => { setForm({ ...empty, submission_type: form.submission_type }); setState('editing') }}>{idea ? 'Предложить ещё идею' : 'Отправить ещё одно'}</Button><Link className="btn btn--ghost" to="/">Вернуться на стену</Link></div></div></section></main></div>
+  return <div className="wrap"><main className="compose"><header className="compose__head"><div className="form-topline"><Logo /><Link className="form-close" to="/" aria-label="Закрыть">×</Link></div><h1 className="compose__title">{title}</h1><p className="compose__lede">{idea ? 'Предложите изменение, которое сделает работу, сервис или процессы лучше.' : 'Расскажите о вопросе, проблеме или ситуации, которая требует внимания.'}</p></header><section className="card"><form onSubmit={submit} noValidate><ErrorBanner message={error} /><p className="form-required">Поля со звёздочкой обязательны.</p>{idea && <div className="field"><label className="label" htmlFor="category">Тема *</label><select id="category" className="input" value={form.category} onChange={(e) => set('category')(e.target.value)}><option value="">Выберите тему</option>{categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</select>{errors.category && <p className="field-error">{errors.category}</p>}</div>}{feedback && <div className="field"><label className="label" htmlFor="feedback-kind">Тип обратной связи</label><select id="feedback-kind" className="input" value={form.feedback_kind} onChange={(e) => set('feedback_kind')(e.target.value)}><option value="">Выберите тип</option><option>Вопрос</option><option>Отзыв</option><option>Проблема</option><option>Жалоба</option><option>Другое</option></select></div>}<Field id="topic" label={idea ? 'Название *' : 'Тема'} value={form.topic} onChange={set('topic')} maxLength={100} error={errors.topic} /><Field id="body" label="Описание *" value={form.body} onChange={set('body')} textarea maxLength={2000} error={errors.body} /><p className="char-count">{form.body.length}/2000</p><fieldset className="visibility"><legend className="label">Автор</legend>{modes.map(([value, name, hint]) => <label className="visibility__option" key={value}><input type="radio" name="visibility" checked={form.visibility === value} onChange={() => setForm((current) => ({ ...current, visibility: value, authorId: value === 'anonymous' ? null : current.authorId, authorName: value === 'anonymous' ? '' : current.authorName }))} /><span><strong>{name}</strong><small>{hint}</small></span></label>)}</fieldset><AuthorPicker value={form.authorId} manualValue={form.authorName} onChange={set('authorId')} onManualChange={set('authorName')} disabled={!named} />{errors.author && <p className="field-error">{errors.author}</p>}<div className="submit-row"><span></span><Button type="submit" disabled={state === 'sending'}>{state === 'sending' ? 'Отправляем…' : idea ? 'Отправить идею' : 'Отправить обращение'}</Button></div></form></section></main></div>
 }

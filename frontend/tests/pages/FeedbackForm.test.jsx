@@ -10,19 +10,17 @@ function renderPage() { return render(<BrowserRouter><FeedbackForm /></BrowserRo
 
 describe('FeedbackForm', () => {
   beforeEach(() => vi.spyOn(employeesApi, 'listEmployees').mockResolvedValue([]))
-
   it('requires text before submitting', () => {
     renderPage()
-    expect(screen.getByRole('button', { name: 'Опубликовать идею' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Прикрепить на стену' })).toBeDisabled()
   })
-
   it('submits an anonymous idea', async () => {
     const user = userEvent.setup()
     vi.spyOn(ideasApi, 'createIdea').mockResolvedValue({ id: '1' })
     renderPage()
-    await user.type(screen.getByLabelText('Расскажите подробнее'), 'Нужна кофемашина')
-    await user.click(screen.getByRole('button', { name: 'Опубликовать идею' }))
+    await user.type(screen.getByLabelText('Что хотите улучшить?'), 'Нужна кофемашина')
+    await user.click(screen.getByRole('button', { name: 'Прикрепить на стену' }))
     expect(ideasApi.createIdea).toHaveBeenCalledWith(expect.objectContaining({ body: 'Нужна кофемашина', visibility: 'anonymous', author_bitrix_id: null }))
-    expect(await screen.findByText('Идея опубликована')).toBeInTheDocument()
+    expect(await screen.findByText('Отправлено на стену')).toBeInTheDocument()
   })
 })

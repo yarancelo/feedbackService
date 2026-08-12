@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     jwt_secret: str = "internal-only-change-me-please-set-a-real-secret"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 30
+    admin_login: str | None = None
+    admin_password: str | None = None
+    request_max_bytes: int = 65536
 
     # Optional: directory of a built SPA to serve (single-process/local mode).
     serve_static_dir: str | None = None
@@ -27,7 +30,7 @@ class Settings(BaseSettings):
     bitrix_timeout_seconds: float = 10.0
 
     # Observability.
-    log_level: str = "DEBUG"
+    log_level: str = "INFO"
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="", extra="ignore")
 

@@ -1,7 +1,7 @@
 // Leveled console logger. One tiny function per concern.
 const LEVELS = { debug: 10, info: 20, warn: 30, error: 40 }
 
-let threshold = LEVELS.debug
+let threshold = LEVELS.warn
 
 export function setLevel(name) {
   if (name in LEVELS) threshold = LEVELS[name]

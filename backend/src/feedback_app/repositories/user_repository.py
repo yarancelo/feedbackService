@@ -22,12 +22,12 @@ class UserRepository:
 
     def get_by_login(self, login: str) -> User | None:
         """Return the admin with this login, or None."""
-        logger.debug("Looking up user by login=%s", login)
+        logger.debug("Looking up user by login")
         return self._session.execute(
             select(User).where(User.login == login)
         ).scalar_one_or_none()
 
     def get_by_id(self, user_id: uuid.UUID) -> User | None:
         """Return the admin with this id, or None."""
-        logger.debug("Looking up user by id=%s", user_id)
+        logger.debug("Looking up user by id")
         return self._session.get(User, user_id)

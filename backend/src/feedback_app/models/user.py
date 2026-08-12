@@ -16,5 +16,4 @@ class User(Base):
     # Generated on the database side on PostgreSQL (uuidv7()).
     id: Mapped[uuid.UUID] = id_column()
     login: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    # Plaintext by requirement: internal-only tool, admins provisioned via the DB.
-    password: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)

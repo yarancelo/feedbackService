@@ -3,7 +3,7 @@ import datetime
 import enum
 import uuid
 
-from sqlalchemy import DateTime, Enum, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from feedback_app.core.database import Base
@@ -22,6 +22,11 @@ class IdeaStatus(str, enum.Enum):
     rejected = "rejected"
 
 
+class SubmissionType(str, enum.Enum):
+    idea = "idea"
+    feedback = "feedback"
+
+
 class Idea(Base):
     """A submitted idea, including an immutable author snapshot."""
 
@@ -31,6 +36,10 @@ class Idea(Base):
     topic: Mapped[str | None] = mapped_column(String(500), nullable=True)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    submission_type: Mapped[SubmissionType] = mapped_column(
+        Enum(SubmissionType, native_enum=False), nullable=False, default=SubmissionType.idea
+    )
+    is_gold: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     visibility: Mapped[Visibility] = mapped_column(Enum(Visibility, native_enum=False), nullable=False)
     status: Mapped[IdeaStatus] = mapped_column(
         Enum(IdeaStatus, native_enum=False), nullable=False, default=IdeaStatus.new

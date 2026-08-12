@@ -4,6 +4,7 @@ Depends on the data layer (UserRepository) and on token functions. Failures are
 raised as domain exceptions; this layer never returns None to signal an error.
 """
 import uuid
+import bcrypt
 
 from feedback_app.core.exceptions import AdminNotFoundError, InvalidCredentialsError
 from feedback_app.core.logging import get_logger
@@ -22,12 +23,11 @@ class AuthService:
 
     def authenticate(self, login: str, password: str) -> User:
         """Return the admin for valid credentials, else raise InvalidCredentialsError."""
-        logger.debug("Authenticating login=%s", login)
         user = self._users.get_by_login(login)
-        if user is None or user.password != password:  # plaintext compare, per spec
-            logger.warning("Failed login attempt for login=%s", login)
+        if user is None or not user.password_hash or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+            logger.warning("Failed login attempt")
             raise InvalidCredentialsError()
-        logger.info("Successful login for login=%s", login)
+        logger.info("Successful login")
         return user
 
     def login(self, login: str, password: str) -> str:

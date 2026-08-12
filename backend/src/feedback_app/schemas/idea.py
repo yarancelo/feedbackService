@@ -4,7 +4,7 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from feedback_app.models.idea import IdeaStatus, Visibility
+from feedback_app.models.idea import IdeaStatus, SubmissionType, Visibility
 
 
 class IdeaCreate(BaseModel):
@@ -14,8 +14,9 @@ class IdeaCreate(BaseModel):
     visibility: Visibility = Visibility.anonymous
     author_bitrix_id: str | None = None
     author_name: str | None = None
+    submission_type: SubmissionType = SubmissionType.idea
 
-    @field_validator("topic", "body", "category", "author_name", mode="before")
+    @field_validator("topic", "body", "category", mode="before")
     @classmethod
     def clean_text(cls, value):
         return value.strip() if isinstance(value, str) else value
@@ -24,15 +25,15 @@ class IdeaCreate(BaseModel):
     @classmethod
     def body_required(cls, value: str) -> str:
         if not value:
-            raise ValueError("Расскажите, в чём заключается идея.")
+            raise ValueError("Текст идеи обязателен")
         return value
 
     @model_validator(mode="after")
     def author_matches_visibility(self):
         if self.visibility == Visibility.anonymous and (self.author_bitrix_id or self.author_name):
-            raise ValueError("Для анонимной идеи автор не указывается.")
+            raise ValueError("У анонимной идеи не может быть автора")
         if self.visibility != Visibility.anonymous and not (self.author_bitrix_id or self.author_name):
-            raise ValueError("Выберите автора.")
+            raise ValueError("Выберите автора")
         return self
 
 
@@ -41,12 +42,19 @@ class IdeaStatusUpdate(BaseModel):
     review_note: str | None = None
 
 
+class GoldStatusUpdate(BaseModel):
+    is_gold: bool
+    override_week_limit: bool = False
+
+
 class IdeaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     topic: str | None
     body: str
     category: str | None
+    submission_type: SubmissionType
+    is_gold: bool = False
     visibility: Visibility
     status: IdeaStatus
     author_bitrix_id: str | None
@@ -59,6 +67,7 @@ class IdeaOut(BaseModel):
     likes: int = 0
     dislikes: int = 0
     viewer_reaction: int = 0
+    comments_count: int = 0
 
 
 class ReactionUpdate(BaseModel):
@@ -100,3 +109,14 @@ class LeaderboardEntry(BaseModel):
 class LeaderboardOut(BaseModel):
     week: str
     winners: list[LeaderboardEntry]
+
+
+class IdeaBankWeek(BaseModel):
+    week: str
+    title: str
+    winner_names: list[str]
+    ideas: list[IdeaOut]
+
+
+class IdeaBankOut(BaseModel):
+    weeks: list[IdeaBankWeek]

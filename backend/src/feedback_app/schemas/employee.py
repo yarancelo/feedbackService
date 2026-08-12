@@ -10,3 +10,7 @@ class EmployeeOut(BaseModel):
     position: str | None = None
     company: str | None = None
     department: str | None = None
+
+class EmployeeSearchOut(BaseModel):
+    bitrix_id: str
+    full_name: str

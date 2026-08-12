@@ -11,7 +11,7 @@ export default function FeedbackList({ onLogout }) {
     <div className="wrap">
       <div className="admin">
         <div className="topbar">
-          <h1 className="topbar__title">Анонимная обратная связь</h1>
+          <h1 className="topbar__title">Анонимные отзывы</h1>
           <Button variant="ghost" onClick={onLogout}>Выйти</Button>
         </div>
 
@@ -25,12 +25,12 @@ export default function FeedbackList({ onLogout }) {
             </select>
           </div>
           <div className="toolbar__group">
-            <label className="label" htmlFor="from">От</label>
+            <label className="label" htmlFor="from">С даты</label>
             <input id="from" className="control" type="date" value={list.dateFrom}
                    onChange={(e) => list.setDateFrom(e.target.value)} />
           </div>
           <div className="toolbar__group">
-            <label className="label" htmlFor="to">До</label>
+            <label className="label" htmlFor="to">По дату</label>
             <input id="to" className="control" type="date" value={list.dateTo}
                    onChange={(e) => list.setDateTo(e.target.value)} />
           </div>
@@ -41,13 +41,13 @@ export default function FeedbackList({ onLogout }) {
         <ErrorBanner message={list.error} />
 
         <div className="count">
-          {list.loading ? 'Загружаем…' : `Всего сообщений: ${list.total}`}
+          {list.loading ? 'Загрузка…' : `Всего отзывов: ${list.total}`}
         </div>
 
         {!list.loading && list.items.length === 0 ? (
           <div className="empty">
-            <p className="empty__title">Сообщений пока нет</p>
-            <p>Новые сообщения появятся здесь.</p>
+            <p className="empty__title">Пока пусто</p>
+            <p>Здесь появятся отзывы по мере поступления.</p>
           </div>
         ) : (
           list.items.map((item) => (
@@ -68,7 +68,7 @@ export default function FeedbackList({ onLogout }) {
           <div className="pager">
             <Button variant="ghost" disabled={list.page <= 1}
                     onClick={() => list.setPage((p) => p - 1)}>← Назад</Button>
-            <span className="pager__label">{list.page} из {list.totalPages}</span>
+            <span className="pager__label">Страница {list.page} из {list.totalPages}</span>
             <Button variant="ghost" disabled={list.page >= list.totalPages}
                     onClick={() => list.setPage((p) => p + 1)}>Вперёд →</Button>
           </div>
