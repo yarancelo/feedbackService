@@ -14,6 +14,8 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password
       POSTGRES_DB: feedback
+    ports:
+      - "5432:5432"                     # exposed for manual DB work / provisioning admins
     volumes:
       - pgdata:/var/lib/postgresql   # PG18: mount at /var/lib/postgresql (data lands in a version subdir)
     healthcheck:
@@ -26,8 +28,10 @@ services:
   backend:
     build: ./backend
     # Local secrets/config stay on the host and are injected into the container.
-    # Copy backend/.env.example to backend/.env before using Bitrix.
+    # The root .env is convenient for Docker deployments; backend/.env also works locally.
     env_file:
+      - path: ./.env
+        required: false
       - path: ./backend/.env
         required: false
     environment:
@@ -35,7 +39,9 @@ services:
       JWT_SECRET: internal-only-change-me-please-set-a-real-secret
       JWT_EXPIRE_MINUTES: "30"
       # Optional: real employee directory from Bitrix24 (unset -> built-in stub list).
-      BITRIX_WEBHOOK_URL: "https://kravtgroup.bitrix24.ru/rest/1576/jufcxgknd0gwwgrk/"
+      # BITRIX_WEBHOOK_URL: "https://<portal>.bitrix24.ru/rest/<user_id>/<code>/"
+    ports:
+      - "8080:8080"                     # exposed for direct API testing
     depends_on:
       postgres:
         condition: service_healthy

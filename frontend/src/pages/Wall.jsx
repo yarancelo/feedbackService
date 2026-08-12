@@ -4,13 +4,41 @@ import { listWall, reactToIdea } from '../api/ideas.js'
 import Button from '../components/Button.jsx'
 import ErrorBanner from '../components/ErrorBanner.jsx'
 import IdeaDialog from '../components/IdeaDialog.jsx'
-import Logo from '../components/Logo.jsx'
 
-const preview = (text) => text.length > 180 ? `${text.slice(0, 180).trim()}...` : text
+const preview = (text) => text.length > 190 ? `${text.slice(0, 190).trim()}…` : text
+
 export default function Wall() {
-  const [page, setPage] = useState(1); const [data, setData] = useState({ items: [], total_pages: 0 }); const [selected, setSelected] = useState(null); const [error, setError] = useState(''); const [loading, setLoading] = useState(true)
-  async function load() { setLoading(true); setError(''); try { setData(await listWall(page)) } catch (requestError) { setError(requestError.message) } finally { setLoading(false) } }
+  const [page, setPage] = useState(1)
+  const [data, setData] = useState({ items: [], total_pages: 0 })
+  const [selected, setSelected] = useState(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  async function load() {
+    setLoading(true); setError('')
+    try { setData(await listWall(page)) } catch (requestError) { setError(requestError.message) } finally { setLoading(false) }
+  }
   useEffect(() => { load() }, [page])
-  async function react(item, value) { try { const updated = await reactToIdea(item.id, value); setData((current) => ({ ...current, items: current.items.map((entry) => entry.id === updated.id ? updated : entry) })); setSelected((current) => current?.id === updated.id ? updated : current) } catch (requestError) { setError(requestError.message) } }
-  return <div className="wrap"><main className="wall-page"><header className="wall-page__head"><div className="page-top"><Logo /><Link className="account-link" to="/admin" aria-label="Личный кабинет">ЛК</Link></div><div className="wall-page__intro"><h1 className="compose__title">Предложения сотрудников</h1><p className="compose__lede">Здесь собраны проверенные решения, которые помогают сделать работу удобнее и эффективнее.</p></div><nav className="wall-page__actions" aria-label="Разделы"><Link className="btn btn--ghost" to="/bank">Банк идей</Link><Link className="btn btn--primary" to="/submit">Добавить предложение</Link></nav></header><details className="rules"><summary>Правила участия</summary><div><p>Раз в неделю определяется автор с наибольшим количеством принятых предложений.</p><p>Учитываются понятные, применимые и не повторяющие уже существующие предложения.</p><p>Автор победившей недели получает 5 000 ₽.</p></div></details><ErrorBanner message={error} />{loading ? <p className="wall-state">Загружаем список...</p> : !data.items.length ? <div className="empty"><p className="empty__title">Пока нет опубликованных предложений</p><p>Добавьте первое решение, которое поможет в работе.</p><Link className="btn btn--primary" to="/submit">Добавить предложение</Link></div> : <div className="idea-grid">{data.items.map((item) => <article className="idea-card" key={item.id}><div className="idea-card__meta">{item.category && <span className="idea-card__category">{item.category}</span>}<span className="status status--accepted">Принято</span></div><h2>{item.topic || 'Без заголовка'}</h2><p>{preview(item.body)}</p><footer><span>{item.author_name ? `${item.author_name}${item.author_department ? `, ${item.author_department}` : ''}` : 'Анонимно'}</span></footer><div className="vote-panel" aria-label="Оценка предложения"><span>Полезное решение?</span><div><button type="button" className={item.viewer_reaction === 1 ? 'reaction is-active' : 'reaction'} aria-label={`Нравится: ${item.likes}`} onClick={() => react(item, item.viewer_reaction === 1 ? 0 : 1)}>👍 <b>{item.likes}</b></button><button type="button" className={item.viewer_reaction === -1 ? 'reaction is-active' : 'reaction'} aria-label={`Не нравится: ${item.dislikes}`} onClick={() => react(item, item.viewer_reaction === -1 ? 0 : -1)}>👎 <b>{item.dislikes}</b></button></div></div><button type="button" className="idea-card__more" onClick={() => setSelected(item)}>Открыть</button></article>)}</div>}{data.total_pages > 1 && <div className="pager"><Button variant="ghost" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Назад</Button><span className="pager__label">Страница {page} из {data.total_pages}</span><Button variant="ghost" disabled={page === data.total_pages} onClick={() => setPage((current) => current + 1)}>Вперед</Button></div>}<IdeaDialog idea={selected} onClose={() => setSelected(null)} onReact={react} /></main></div>
+
+  async function react(idea, value) {
+    try {
+      const updated = await reactToIdea(idea.id, value)
+      setData((current) => ({ ...current, items: current.items.map((item) => item.id === updated.id ? updated : item) }))
+      setSelected((current) => current?.id === updated.id ? updated : current)
+    } catch (requestError) { setError(requestError.message) }
+  }
+
+  return <div className="wrap"><main className="wall-page">
+    <header className="wall-page__head"><div><p className="eyebrow">Есть идея, как сделать лучше?</p><h1 className="compose__title">Стена идей</h1><p className="compose__lede">Делитесь идеями, которые делают работу проще, сервис лучше, а компанию сильнее.</p></div><div className="wall-page__actions"><Link className="btn btn--primary" to="/submit?type=idea">＋ Предложить идею</Link><Link className="btn btn--ghost" to="/submit?type=feedback">Оставить отзыв</Link></div></header>
+    <section className="reward"><strong>5 000 ₽ автору идеи недели</strong><span>В зачёт попадают принятые идеи с указанным автором: полезные, понятные и не повторяющие уже предложенные.</span></section>
+    <ErrorBanner message={error} />
+    {loading ? <p className="wall-state">Загружаем идеи…</p> : !data.items.length ? <div className="empty"><p className="empty__title">Здесь пока нет идей</p><p>Предложите первую.</p><Link className="btn btn--primary" to="/submit?type=idea">Предложить идею</Link></div> : <div className="idea-grid">{data.items.map((idea) => <article className="idea-card" key={idea.id}>
+      <div className="idea-card__meta"><span className={idea.status === 'accepted' ? 'status status--accepted' : 'status'}>{idea.status === 'accepted' ? 'Принята' : 'На рассмотрении'}</span>{idea.category && <span className="idea-card__category">{idea.category}</span>}</div>
+      <h2>{idea.topic || 'Без названия'}</h2><p>{preview(idea.body)}</p>
+      <footer><span>{idea.author_name ? `${idea.author_name}${idea.author_department ? ` · ${idea.author_department}` : ''}` : 'Анонимно'}</span><div className="reaction-row"><button className={idea.viewer_reaction === 1 ? 'reaction is-active' : 'reaction'} onClick={() => react(idea, idea.viewer_reaction === 1 ? 0 : 1)}>👍 {idea.likes}</button><button className={idea.viewer_reaction === -1 ? 'reaction is-active' : 'reaction'} onClick={() => react(idea, idea.viewer_reaction === -1 ? 0 : -1)}>👎 {idea.dislikes}</button></div></footer>
+      <button type="button" className="idea-card__more" onClick={() => setSelected(idea)}>Подробнее</button>
+    </article>)}</div>}
+    {data.total_pages > 1 && <div className="pager"><Button variant="ghost" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>← Назад</Button><span className="pager__label">{page} из {data.total_pages}</span><Button variant="ghost" disabled={page === data.total_pages} onClick={() => setPage((current) => current + 1)}>Вперёд →</Button></div>}
+    <IdeaDialog idea={selected} onClose={() => setSelected(null)} onReact={react} />
+  </main></div>
 }

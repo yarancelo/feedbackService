@@ -16,7 +16,7 @@ class FeedbackCreate(BaseModel):
     def _reject_blank(cls, value: str) -> str:
         cleaned = value.strip()
         if not cleaned:
-            raise ValueError("Поле не может быть пустым")
+            raise ValueError("Заполните это поле.")
         return cleaned
 
 

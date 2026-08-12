@@ -1,20 +1,98 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { createIdea } from '../api/ideas.js'
-import { listCategories } from '../api/categories.js'
 import AuthorPicker from '../components/AuthorPicker.jsx'
 import Button from '../components/Button.jsx'
 import ErrorBanner from '../components/ErrorBanner.jsx'
 import Field from '../components/Field.jsx'
-import Logo from '../components/Logo.jsx'
 
-const VISIBILITIES = [['anonymous', 'Анонимно', 'Автор не будет указан.'], ['private', 'Скрыть автора', 'Автора увидит только администратор.'], ['public', 'Показать автора', 'Имя и отдел будут указаны после публикации.']]
+const VISIBILITIES = [
+  ['anonymous', 'Анонимно', 'Без имени. Идея не участвует в выборе идеи недели.'],
+  ['private', 'Скрыть имя', 'Имя увидит только администратор. Идея сможет участвовать в выборе идеи недели.'],
+  ['public', 'Показать имя', 'Имя и отдел будут видны на стене.'],
+]
+
 export default function FeedbackForm() {
-  const [categories, setCategories] = useState([]); const [form, setForm] = useState({ submission_type: 'idea', topic: '', body: '', category: '', visibility: 'anonymous', authorId: null }); const [state, setState] = useState('editing'); const [error, setError] = useState('')
+  const [searchParams] = useSearchParams()
+  const isFeedback = searchParams.get('type') === 'feedback'
+  const defaultCategory = isFeedback ? 'Обратная связь' : 'Идея'
+  const [form, setForm] = useState({ topic: '', body: '', category: defaultCategory, visibility: 'anonymous', authorId: null, authorName: '' })
+  const [state, setState] = useState('editing')
+  const [error, setError] = useState('')
+  const named = form.visibility !== 'anonymous'
   const set = (name) => (value) => setForm((current) => ({ ...current, [name]: value }))
-  const isIdea = form.submission_type === 'idea'; const named = form.visibility !== 'anonymous'; const canSubmit = form.body.trim() && (!isIdea || form.category) && (!named || form.authorId) && state !== 'sending'
-  useEffect(() => { listCategories().then(setCategories).catch((requestError) => setError(requestError.message)) }, [])
-  async function submit(event) { event.preventDefault(); if (!canSubmit) return; setState('sending'); setError(''); try { await createIdea({ topic: form.topic.trim() || null, body: form.body.trim(), category: isIdea ? form.category : 'Обращение', visibility: form.visibility, author_bitrix_id: form.authorId, submission_type: form.submission_type }); setState('sent') } catch (requestError) { setError(requestError.message); setState('editing') } }
-  function reset() { setForm({ submission_type: 'idea', topic: '', body: '', category: '', visibility: 'anonymous', authorId: null }); setError(''); setState('editing') }
-  return <div className="wrap"><main className="compose"><header className="compose__head"><Logo /><h1 className="compose__title">Отправить предложение</h1><p className="compose__lede">Выберите тип и опишите суть. Предложения проходят проверку перед публикацией.</p></header><section className="card">{state === 'sent' ? <div className="sent"><h2 className="sent__title">Отправлено</h2><p className="sent__text">Сообщение поступило администратору на проверку.</p><Button type="button" onClick={reset}>Добавить еще</Button></div> : <form onSubmit={submit} noValidate><ErrorBanner message={error} /><div className="field"><label className="label" htmlFor="submission_type">Тип</label><select id="submission_type" className="input" value={form.submission_type} onChange={(event) => set('submission_type')(event.target.value)}><option value="idea">Предложение по улучшению</option><option value="feedback">Обращение</option></select></div>{isIdea && <div className="field"><label className="label" htmlFor="category">Тема</label><select id="category" className="input" value={form.category} onChange={(event) => set('category')(event.target.value)} required><option value="">Выберите тему</option>{categories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}</select></div>}<Field id="topic" label="Краткий заголовок" value={form.topic} onChange={set('topic')} maxLength={500} placeholder="Например: Общий календарь смен" /><Field id="body" label="Описание" value={form.body} onChange={set('body')} textarea placeholder={isIdea ? 'Опишите, что можно улучшить и как это сделать' : 'Опишите вопрос или ситуацию'} /><fieldset className="visibility"><legend className="label">Автор</legend>{VISIBILITIES.map(([value, title, hint]) => <label className="visibility__option" key={value}><input type="radio" name="visibility" value={value} checked={form.visibility === value} onChange={() => setForm((current) => ({ ...current, visibility: value, authorId: value === 'anonymous' ? null : current.authorId }))} /><span><strong>{title}</strong><small>{hint}</small></span></label>)}</fieldset><AuthorPicker value={form.authorId} onChange={set('authorId')} disabled={!named} />{named && !form.authorId && <p className="form-note">Выберите автора из списка.</p>}<div className="row-between"><span className="hint">Публикуются только принятые предложения.</span><Button type="submit" disabled={!canSubmit}>{state === 'sending' ? 'Отправляем' : 'Отправить'}</Button></div></form>}</section><p className="footlink"><Link to="/">Вернуться к списку</Link></p></main></div>
+  const canSubmit = form.body.trim() && (!named || form.authorId || form.authorName.trim()) && state !== 'sending'
+
+  async function submit(event) {
+    event.preventDefault()
+    if (!canSubmit) return
+    setState('sending')
+    setError('')
+    try {
+      await createIdea({
+        topic: form.topic.trim() || null,
+        body: form.body.trim(),
+        category: form.category.trim() || null,
+        visibility: form.visibility,
+        author_bitrix_id: form.authorId,
+        author_name: form.authorId ? null : form.authorName.trim() || null,
+      })
+      setState('sent')
+    } catch (requestError) {
+      setError(requestError.message)
+      setState('editing')
+    }
+  }
+
+  function reset() {
+    setForm({ topic: '', body: '', category: defaultCategory, visibility: 'anonymous', authorId: null, authorName: '' })
+    setError('')
+    setState('editing')
+  }
+
+  return (
+    <div className="wrap">
+      <main className="compose">
+        <header className="compose__head">
+          <Link className="form-close" to="/" aria-label="Закрыть">×</Link>
+          <p className="eyebrow">Стена идей</p>
+          <h1 className="compose__title">{isFeedback ? 'Оставить отзыв' : 'Предложить идею'}</h1>
+          <p className="compose__lede">Одна идея - один стикер. Не обязательно предлагать что-то большое: небольшие улучшения тоже важны.</p>
+        </header>
+        <section className="card">
+          {state === 'sent' ? (
+            <div className="sent">
+              <div className="sent__mark" aria-hidden="true">✓</div>
+              <h2 className="sent__title">Идея опубликована</h2>
+              <p className="sent__text">Идея уже на стене со статусом «На рассмотрении». После модерации принятые идеи с указанным автором смогут участвовать в выборе идеи недели.</p>
+              <Button type="button" onClick={reset}>Предложить ещё идею</Button>
+            </div>
+          ) : (
+            <form onSubmit={submit} noValidate>
+              <ErrorBanner message={error} />
+              <Field id="topic" label="Название идеи" value={form.topic} onChange={set('topic')} maxLength={500} placeholder="Сформулируйте идею в нескольких словах" />
+              <Field id="body" label="Расскажите подробнее" value={form.body} onChange={set('body')} textarea placeholder="Что предлагаете изменить и почему это будет полезно?" />
+              {!isFeedback && <Field id="category" label="Категория" value={form.category} onChange={set('category')} maxLength={100} placeholder="Например: сервис, процессы или команда" />}
+              <fieldset className="visibility">
+                <legend className="label">Как указать автора?</legend>
+                {VISIBILITIES.map(([value, title, hint]) => (
+                  <label className="visibility__option" key={value}>
+                    <input type="radio" name="visibility" value={value} checked={form.visibility === value} onChange={() => setForm((current) => ({ ...current, visibility: value, authorId: value === 'anonymous' ? null : current.authorId, authorName: value === 'anonymous' ? '' : current.authorName }))} />
+                    <span><strong>{title}</strong><small>{hint}</small></span>
+                  </label>
+                ))}
+              </fieldset>
+              <AuthorPicker value={form.authorId} manualValue={form.authorName} onChange={set('authorId')} onManualChange={set('authorName')} disabled={!named} />
+              {named && !form.authorId && !form.authorName.trim() && <p className="form-note">Выберите сотрудника или укажите ФИО.</p>}
+              <div className="row-between">
+                <span className="hint">Полезные и оригинальные идеи могут стать идеей недели.</span>
+                <Button type="submit" disabled={!canSubmit}>{state === 'sending' ? 'Отправляем…' : 'Опубликовать идею'}</Button>
+              </div>
+            </form>
+          )}
+        </section>
+        <p className="footlink"><Link to="/">Вернуться к стене идей</Link> · <Link to="/admin">Вход для администратора</Link></p>
+      </main>
+    </div>
+  )
 }

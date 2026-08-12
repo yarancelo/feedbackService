@@ -10,7 +10,7 @@ these — it returns values instead.
 class AppError(Exception):
     """Base class for all application-level errors."""
 
-    message: str = "Внутренняя ошибка приложения"
+    message: str = "Что-то пошло не так. Попробуйте ещё раз."
 
     def __init__(self, message: str | None = None) -> None:
         super().__init__(message or self.message)
@@ -20,7 +20,7 @@ class AppError(Exception):
 class AuthError(AppError):
     """Base class for authentication/authorization failures."""
 
-    message = "Ошибка авторизации"
+    message = "Не удалось войти. Проверьте данные и попробуйте ещё раз."
 
 
 class InvalidCredentialsError(AuthError):
@@ -32,25 +32,25 @@ class InvalidCredentialsError(AuthError):
 class TokenError(AuthError):
     """Access token is missing, malformed or expired."""
 
-    message = "Недействительный или просроченный токен"
+    message = "Сессия истекла. Войдите снова."
 
 
 class AdminNotFoundError(AuthError):
     """Token was valid but the referenced admin no longer exists."""
 
-    message = "Администратор не найден"
+    message = "Учётная запись не найдена."
 
 
 class NotFoundError(AppError):
     """Base class for missing-resource errors."""
 
-    message = "Ресурс не найден"
+    message = "Запрашиваемые данные не найдены."
 
 
 class FeedbackNotFoundError(NotFoundError):
     """A feedback item with the requested id does not exist."""
 
-    message = "Отзыв не найден"
+    message = "Сообщение не найдено."
 
 
 class IdeaNotFoundError(NotFoundError):
@@ -64,10 +64,10 @@ class UnknownAuthorError(NotFoundError):
 class IntegrationError(AppError):
     """Base class for failures talking to an external system."""
 
-    message = "Внешний сервис недоступен"
+    message = "Сервис временно недоступен. Попробуйте позже."
 
 
 class BitrixError(IntegrationError):
     """A call to the Bitrix24 REST API failed."""
 
-    message = "Не удалось получить данные из Bitrix24"
+    message = "Не удалось загрузить данные из Bitrix24. Попробуйте ещё раз."

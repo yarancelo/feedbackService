@@ -4,7 +4,7 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from feedback_app.models.idea import IdeaStatus, SubmissionType, Visibility
+from feedback_app.models.idea import IdeaStatus, Visibility
 
 
 class IdeaCreate(BaseModel):
@@ -13,9 +13,9 @@ class IdeaCreate(BaseModel):
     category: str | None = None
     visibility: Visibility = Visibility.anonymous
     author_bitrix_id: str | None = None
-    submission_type: SubmissionType = SubmissionType.idea
+    author_name: str | None = None
 
-    @field_validator("topic", "body", "category", mode="before")
+    @field_validator("topic", "body", "category", "author_name", mode="before")
     @classmethod
     def clean_text(cls, value):
         return value.strip() if isinstance(value, str) else value
@@ -24,15 +24,15 @@ class IdeaCreate(BaseModel):
     @classmethod
     def body_required(cls, value: str) -> str:
         if not value:
-            raise ValueError("Текст идеи обязателен")
+            raise ValueError("Расскажите, в чём заключается идея.")
         return value
 
     @model_validator(mode="after")
     def author_matches_visibility(self):
-        if self.visibility == Visibility.anonymous and self.author_bitrix_id:
-            raise ValueError("У анонимной идеи не может быть автора")
-        if self.visibility != Visibility.anonymous and not self.author_bitrix_id:
-            raise ValueError("Выберите автора")
+        if self.visibility == Visibility.anonymous and (self.author_bitrix_id or self.author_name):
+            raise ValueError("Для анонимной идеи автор не указывается.")
+        if self.visibility != Visibility.anonymous and not (self.author_bitrix_id or self.author_name):
+            raise ValueError("Выберите автора.")
         return self
 
 
@@ -41,19 +41,12 @@ class IdeaStatusUpdate(BaseModel):
     review_note: str | None = None
 
 
-class GoldStatusUpdate(BaseModel):
-    is_gold: bool
-    override_week_limit: bool = False
-
-
 class IdeaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     topic: str | None
     body: str
     category: str | None
-    submission_type: SubmissionType
-    is_gold: bool = False
     visibility: Visibility
     status: IdeaStatus
     author_bitrix_id: str | None
@@ -107,14 +100,3 @@ class LeaderboardEntry(BaseModel):
 class LeaderboardOut(BaseModel):
     week: str
     winners: list[LeaderboardEntry]
-
-
-class IdeaBankWeek(BaseModel):
-    week: str
-    title: str
-    winner_names: list[str]
-    ideas: list[IdeaOut]
-
-
-class IdeaBankOut(BaseModel):
-    weeks: list[IdeaBankWeek]

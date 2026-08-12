@@ -5,11 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import LoginForm from '../../src/pages/Admin/LoginForm.jsx'
 
 function renderLogin(onLogin) {
-  return render(
-    <MemoryRouter>
-      <LoginForm onLogin={onLogin} />
-    </MemoryRouter>,
-  )
+  return render(<MemoryRouter><LoginForm onLogin={onLogin} /></MemoryRouter>)
 }
 
 describe('LoginForm', () => {
@@ -18,7 +14,7 @@ describe('LoginForm', () => {
     renderLogin(onLogin)
     await userEvent.type(screen.getByLabelText('Логин'), 'admin')
     await userEvent.type(screen.getByLabelText('Пароль'), 'password')
-    await userEvent.click(screen.getByRole('button', { name: 'Авторизоваться' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Войти' }))
     expect(onLogin).toHaveBeenCalledWith('admin', 'password')
   })
 
@@ -27,9 +23,7 @@ describe('LoginForm', () => {
     renderLogin(onLogin)
     await userEvent.type(screen.getByLabelText('Логин'), 'admin')
     await userEvent.type(screen.getByLabelText('Пароль'), 'wrong')
-    await userEvent.click(screen.getByRole('button', { name: 'Авторизоваться' }))
-    await waitFor(() =>
-      expect(screen.getByText('Неверный логин или пароль')).toBeInTheDocument(),
-    )
+    await userEvent.click(screen.getByRole('button', { name: 'Войти' }))
+    await waitFor(() => expect(screen.getByText('Неверный логин или пароль')).toBeInTheDocument())
   })
 })

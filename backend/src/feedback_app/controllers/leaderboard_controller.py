@@ -9,8 +9,3 @@ router = APIRouter(prefix="/leaderboard", tags=["leaderboard"])
 @router.get("", response_model=LeaderboardOut)
 def get_leaderboard(week: str | None = Query(None, pattern=r"^\d{4}-W\d{2}$"), _admin: User = Depends(get_current_admin), service: IdeaService = Depends(get_idea_service)) -> LeaderboardOut:
     return service.leaderboard(week)
-
-
-@router.get("/history", response_model=list[LeaderboardOut])
-def get_leaderboard_history(_admin: User = Depends(get_current_admin), service: IdeaService = Depends(get_idea_service)) -> list[LeaderboardOut]:
-    return service.leaderboard_history()

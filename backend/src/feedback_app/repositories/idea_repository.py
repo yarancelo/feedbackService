@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from feedback_app.models.idea import Idea, IdeaStatus, SubmissionType
+from feedback_app.models.idea import Idea, IdeaStatus
 from feedback_app.models.reaction import IdeaReaction
 
 
@@ -49,29 +49,25 @@ class IdeaRepository:
 
     def list(self, *, limit: int, offset: int, status: IdeaStatus | None = None,
              category: str | None = None, date_from: datetime.datetime | None = None,
-             date_to: datetime.datetime | None = None, accepted_only: bool = False, public_only: bool = False,
-             submission_type: SubmissionType | None = None) -> list[Idea]:
+             date_to: datetime.datetime | None = None, accepted_only: bool = False, public_only: bool = False) -> list[Idea]:
         stmt = select(Idea)
-        stmt = self._filtered(stmt, status, category, date_from, date_to, accepted_only, public_only, submission_type)
+        stmt = self._filtered(stmt, status, category, date_from, date_to, accepted_only, public_only)
         return list(self._session.execute(stmt.order_by(Idea.created_at.desc()).limit(limit).offset(offset)).scalars())
 
     def count(self, *, status: IdeaStatus | None = None, category: str | None = None,
               date_from: datetime.datetime | None = None, date_to: datetime.datetime | None = None,
-              accepted_only: bool = False, public_only: bool = False, submission_type: SubmissionType | None = None) -> int:
-        stmt = self._filtered(select(func.count()).select_from(Idea), status, category, date_from, date_to, accepted_only, public_only, submission_type)
+              accepted_only: bool = False, public_only: bool = False) -> int:
+        stmt = self._filtered(select(func.count()).select_from(Idea), status, category, date_from, date_to, accepted_only, public_only)
         return self._session.execute(stmt).scalar_one()
 
     @staticmethod
-    def _filtered(stmt, status, category, date_from, date_to, accepted_only, public_only, submission_type):
+    def _filtered(stmt, status, category, date_from, date_to, accepted_only, public_only):
         if accepted_only:
             stmt = stmt.where(Idea.status == IdeaStatus.accepted)
         elif status:
             stmt = stmt.where(Idea.status == status)
         if public_only:
-            stmt = stmt.where(Idea.status == IdeaStatus.accepted)
-            stmt = stmt.where(Idea.submission_type == SubmissionType.idea)
-        if submission_type:
-            stmt = stmt.where(Idea.submission_type == submission_type)
+            stmt = stmt.where(Idea.status != IdeaStatus.rejected)
         if category:
             stmt = stmt.where(Idea.category == category)
         if date_from:

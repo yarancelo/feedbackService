@@ -21,10 +21,8 @@ from feedback_app.integrations.bitrix_client import BitrixClient
 from feedback_app.repositories.idea_repository import IdeaRepository
 from feedback_app.services.idea_service import IdeaService
 from feedback_app.services import employee_service
-from feedback_app.repositories.category_repository import CategoryRepository
-from feedback_app.services.category_service import CategoryService
-from feedback_app.repositories.comment_repository import CommentRepository
-from feedback_app.services.comment_service import CommentService
+from feedback_app.repositories.manual_author_repository import ManualAuthorRepository
+from feedback_app.services.manual_author_service import ManualAuthorService
 
 logger = get_logger(__name__)
 
@@ -65,15 +63,12 @@ def get_idea_service(
     db: Session = Depends(get_db), client: BitrixClient = Depends(get_bitrix_client)
 ) -> IdeaService:
     """Assemble the ideas service with the current employee directory."""
-    return IdeaService(IdeaRepository(db), lambda bitrix_id: employee_service.find_employee(client, bitrix_id))
+    manual_authors = ManualAuthorService(ManualAuthorRepository(db), IdeaRepository(db))
+    return IdeaService(IdeaRepository(db), lambda bitrix_id: manual_authors.as_employee(bitrix_id) or employee_service.find_employee(client, bitrix_id))
 
 
-def get_category_service(db: Session = Depends(get_db)) -> CategoryService:
-    return CategoryService(CategoryRepository(db))
-
-
-def get_comment_service(db: Session = Depends(get_db)) -> CommentService:
-    return CommentService(CommentRepository(db), IdeaRepository(db))
+def get_manual_author_service(db: Session = Depends(get_db)) -> ManualAuthorService:
+    return ManualAuthorService(ManualAuthorRepository(db), IdeaRepository(db))
 
 
 def get_current_admin(
